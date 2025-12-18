@@ -104,17 +104,17 @@ type MongoDBConfig struct {
 
 // KeepaAPIConfig Keepa API 配置
 type KeepaAPIConfig struct {
-	AccessKey        string           `mapstructure:"access_key"`
-	Timeout          string           `mapstructure:"timeout"`            // 例如: "30s"
-	PrintCurlCommand bool             `mapstructure:"print_curl_command"` // 是否打印 curl 命令（用于调试）
-	PrintResponseBody bool            `mapstructure:"print_response_body"` // 是否打印 API 响应体（用于调试）
-	Token            TokenConfig      `mapstructure:"token"`              // Token 管理配置
+	AccessKey         string      `mapstructure:"access_key"`
+	Timeout           string      `mapstructure:"timeout"`             // 例如: "30s"
+	PrintCurlCommand  bool        `mapstructure:"print_curl_command"`  // 是否打印 curl 命令（用于调试）
+	PrintResponseBody bool        `mapstructure:"print_response_body"` // 是否打印 API 响应体（用于调试）
+	Token             TokenConfig `mapstructure:"token"`               // Token 管理配置
 }
 
 // TokenConfig Token 管理配置
 type TokenConfig struct {
 	MinTokensThreshold int    `mapstructure:"min_tokens_threshold"` // 最小token阈值
-	MaxWaitTime        string `mapstructure:"max_wait_time"`       // 最大等待时间，例如: "60m"
+	MaxWaitTime        string `mapstructure:"max_wait_time"`        // 最大等待时间，例如: "60m"
 	EnableRateLimit    bool   `mapstructure:"enable_rate_limit"`    // 是否启用速率限制
 
 	// 解析后的时间，由 Load 函数填充

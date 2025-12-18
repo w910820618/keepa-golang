@@ -95,6 +95,95 @@ func (s *Storage) SaveRawData(ctx context.Context, collectionName string, data i
 	return nil
 }
 
+// GetDatabase 获取底层的 MongoDB 数据库对象
+func (s *Storage) GetDatabase() *mongo.Database {
+	return s.db
+}
+
+// GetCollection 获取指定名称的集合
+func (s *Storage) GetCollection(collectionName string) *mongo.Collection {
+	return s.db.Collection(collectionName)
+}
+
+// FindDocuments 查询文档
+func (s *Storage) FindDocuments(ctx context.Context, collectionName string, filter bson.M, opts *options.FindOptions) (*mongo.Cursor, error) {
+	if s.logger != nil {
+		s.logger.Debug("finding documents from MongoDB",
+			zap.String("collection", collectionName),
+			zap.Any("filter", filter),
+		)
+	}
+
+	collection := s.db.Collection(collectionName)
+	return collection.Find(ctx, filter, opts)
+}
+
+// UpdateMany 批量更新文档
+func (s *Storage) UpdateMany(ctx context.Context, collectionName string, filter bson.M, update bson.M) (*mongo.UpdateResult, error) {
+	if s.logger != nil {
+		s.logger.Debug("updating documents in MongoDB",
+			zap.String("collection", collectionName),
+			zap.Any("filter", filter),
+		)
+	}
+
+	collection := s.db.Collection(collectionName)
+	result, err := collection.UpdateMany(ctx, filter, update)
+	if err != nil {
+		if s.logger != nil {
+			s.logger.Error("failed to update documents in MongoDB",
+				zap.String("collection", collectionName),
+				zap.Error(err),
+			)
+		}
+		return nil, fmt.Errorf("failed to update documents: %w", err)
+	}
+
+	if s.logger != nil {
+		s.logger.Info("documents updated in MongoDB successfully",
+			zap.String("collection", collectionName),
+			zap.Int64("matched_count", result.MatchedCount),
+			zap.Int64("modified_count", result.ModifiedCount),
+		)
+	}
+
+	return result, nil
+}
+
+// UpsertOne 插入或更新单个文档
+func (s *Storage) UpsertOne(ctx context.Context, collectionName string, filter bson.M, update bson.M) (*mongo.UpdateResult, error) {
+	if s.logger != nil {
+		s.logger.Debug("upserting document in MongoDB",
+			zap.String("collection", collectionName),
+			zap.Any("filter", filter),
+		)
+	}
+
+	collection := s.db.Collection(collectionName)
+	opts := options.Update().SetUpsert(true)
+	result, err := collection.UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		if s.logger != nil {
+			s.logger.Error("failed to upsert document in MongoDB",
+				zap.String("collection", collectionName),
+				zap.Error(err),
+			)
+		}
+		return nil, fmt.Errorf("failed to upsert document: %w", err)
+	}
+
+	if s.logger != nil {
+		s.logger.Debug("document upserted in MongoDB successfully",
+			zap.String("collection", collectionName),
+			zap.Int64("matched_count", result.MatchedCount),
+			zap.Int64("modified_count", result.ModifiedCount),
+			zap.Any("upserted_id", result.UpsertedID),
+		)
+	}
+
+	return result, nil
+}
+
 // SaveRawDataWithFilter 保存原始数据，如果已存在则更新
 func (s *Storage) SaveRawDataWithFilter(ctx context.Context, collectionName string, filter bson.M, data interface{}) error {
 	if s.logger != nil {

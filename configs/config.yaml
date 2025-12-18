@@ -29,7 +29,7 @@ database:
   # MySQL 配置
   mysql:
     enabled: false  # 设置为 true 启用 MySQL
-    host: localhost
+    host: 192.168.0.105
     port: 3306
     username: root
     password: ""
@@ -42,11 +42,11 @@ database:
 
   # PostgreSQL 配置
   postgresql:
-    enabled: false  # 设置为 true 启用 PostgreSQL
-    host: localhost
+    enabled: true  # 设置为 true 启用 PostgreSQL
+    host: 192.168.0.105
     port: 5432
-    username: postgres
-    password: ""
+    username: admin
+    password: secret123
     database: keepa
     sslmode: disable  # disable, require, verify-ca, verify-full
     max_open_conns: 25
@@ -56,12 +56,12 @@ database:
 
   # MongoDB 配置
   mongodb:
-    enabled: false  # 设置为 true 启用 MongoDB
-    uri: mongodb://localhost:27017  # MongoDB 连接 URI
+    enabled: true  # 设置为 true 启用 MongoDB
+    uri: mongodb://192.168.0.105:27017  # MongoDB 连接 URI
     database: keepa
     auth_source: admin  # 认证数据库
-    username: ""        # 如果 URI 中已包含，可以留空
-    password: ""        # 如果 URI 中已包含，可以留空
+    username: "admin"        # 如果 URI 中已包含，可以留空
+    password: "secret123"        # 如果 URI 中已包含，可以留空
     replica_set: ""     # 副本集名称（如果使用副本集）
     max_pool_size: 100  # 最大连接池大小
     min_pool_size: 10   # 最小连接池大小

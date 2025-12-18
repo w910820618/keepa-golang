@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"keepa/internal/api"
 	"keepa/internal/config"
 	"keepa/internal/database"
 	"keepa/internal/function"
@@ -102,11 +103,31 @@ func main() {
 	// 设置全局数据库管理器
 	database.SetGlobal(dbs)
 
+	// 创建 Storage
+	var storage *database.Storage
+	if dbs.MongoDB != nil {
+		storage = database.NewStorage(dbs.MongoDB, zapLogger)
+	}
+
+	// 创建 API 客户端
+	apiTimeout, err := time.ParseDuration(cfg.KeepaAPI.Timeout)
+	if err != nil {
+		apiTimeout = 30 * time.Second
+	}
+
+	apiClient := api.NewClient(api.Config{
+		AccessKey:         cfg.KeepaAPI.AccessKey,
+		Timeout:           apiTimeout,
+		Logger:            zapLogger,
+		PrintCurlCommand:  cfg.KeepaAPI.PrintCurlCommand,
+		PrintResponseBody: cfg.KeepaAPI.PrintResponseBody,
+	})
+
 	// 创建任务注册表
 	registry := task.NewTaskRegistry()
 
 	// 注册任务
-	if err := registerTasks(registry); err != nil {
+	if err := registerTasks(registry, apiClient, storage, zapLogger); err != nil {
 		zapLogger.Fatal("failed to register tasks", zap.Error(err))
 	}
 
@@ -198,14 +219,29 @@ func main() {
 }
 
 // registerTasks 注册所有任务
-func registerTasks(registry *task.TaskRegistry) error {
+func registerTasks(registry *task.TaskRegistry, apiClient *api.Client, storage *database.Storage, logger *zap.Logger) error {
 	// 注册清理任务（示例）
 	// 注意：在实际使用中，您可以根据配置决定是否启用某些任务
 	if err := registry.Register(tasks.NewCleanupTask()); err != nil {
 		return fmt.Errorf("failed to register cleanup task: %w", err)
 	}
 
-	// 在这里注册更多任务...
+	// 注册 Keepa 数据采集任务（需要 MongoDB 和 API 客户端）
+	if storage != nil && apiClient != nil {
+		// 注册 ASIN 获取任务
+		if err := registry.Register(tasks.NewKeepaFetchASINsTask(apiClient, storage, logger)); err != nil {
+			return fmt.Errorf("failed to register keepa fetch ASINs task: %w", err)
+		}
+
+		// 注册产品详情获取任务
+		if err := registry.Register(tasks.NewKeepaFetchProductsTask(apiClient, storage, logger)); err != nil {
+			return fmt.Errorf("failed to register keepa fetch products task: %w", err)
+		}
+
+		logger.Info("registered Keepa data collection tasks")
+	} else {
+		logger.Warn("skipping Keepa tasks registration: MongoDB storage or API client not available")
+	}
 
 	return nil
 }
