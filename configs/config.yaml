@@ -1,0 +1,75 @@
+app:
+  name: keepa
+  version: 1.0.0
+  env: development
+
+scheduler:
+  # 默认任务超时时间，支持: s(秒), m(分钟), h(小时)
+  default_timeout: 30m
+  # 时区设置，参考: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+  location: Asia/Shanghai
+
+logger:
+  # 日志级别: debug, info, warn, error
+  level: info
+  # 日志格式: json, console
+  format: console
+  # 日志文件路径
+  output_path: logs/app.log
+  # 日志文件最大大小(MB)
+  max_size: 100
+  # 保留的日志文件数量
+  max_backups: 3
+  # 日志保留天数
+  max_age: 7
+  # 是否压缩旧日志
+  compress: true
+
+database:
+  # MySQL 配置
+  mysql:
+    enabled: false  # 设置为 true 启用 MySQL
+    host: localhost
+    port: 3306
+    username: root
+    password: ""
+    database: keepa
+    charset: utf8mb4
+    max_open_conns: 25      # 最大打开连接数
+    max_idle_conns: 5       # 最大空闲连接数
+    conn_max_lifetime: 5m   # 连接最大存活时间
+    conn_max_idle_time: 10m # 连接最大空闲时间
+
+  # PostgreSQL 配置
+  postgresql:
+    enabled: false  # 设置为 true 启用 PostgreSQL
+    host: localhost
+    port: 5432
+    username: postgres
+    password: ""
+    database: keepa
+    sslmode: disable  # disable, require, verify-ca, verify-full
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: 5m
+    conn_max_idle_time: 10m
+
+  # MongoDB 配置
+  mongodb:
+    enabled: false  # 设置为 true 启用 MongoDB
+    uri: mongodb://localhost:27017  # MongoDB 连接 URI
+    database: keepa
+    auth_source: admin  # 认证数据库
+    username: ""        # 如果 URI 中已包含，可以留空
+    password: ""        # 如果 URI 中已包含，可以留空
+    replica_set: ""     # 副本集名称（如果使用副本集）
+    max_pool_size: 100  # 最大连接池大小
+    min_pool_size: 10   # 最小连接池大小
+    max_idle_time: 30m  # 连接最大空闲时间
+
+# Keepa API 配置
+keepa_api:
+  access_key: "3punsr6phlssuf2ttp87fibotsjt3205q9bcq9ag3aq36hcrj2ebhnqjcjmnls9b"  # Keepa API 访问密钥（必须配置）
+  timeout: 30s                                                                     # 请求超时时间
+
+

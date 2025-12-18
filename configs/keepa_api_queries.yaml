@@ -1,0 +1,135 @@
+# Keepa API 查询配置
+# 此文件用于配置各个 Keepa API 的查询参数
+# 每个 API 可以配置多个查询任务，每个任务包含查询参数和存储配置
+
+# Best Sellers API 配置
+best_sellers:
+  enabled: true  # 是否启用此 API
+  collection: "best_sellers"  # MongoDB 集合名称
+  tasks:
+    - name: "us_beauty_current"  # 任务名称
+      params:
+        domain: 1  # US
+        category: "Beauty"
+        range: 0  # 当前排名
+      enabled: true
+    - name: "us_electronics_30days"
+      params:
+        domain: 1
+        category: "Electronics"
+        range: 30  # 30天平均
+      enabled: true
+
+# Category Lookup API 配置
+category_lookup:
+  enabled: true
+  collection: "category_lookup"
+  tasks:
+    - name: "us_root_categories"
+      params:
+        domain: 1
+        category: [0]  # 获取所有根分类
+      enabled: true
+    - name: "us_specific_categories"
+      params:
+        domain: 1
+        category: [1036592, 1036684]  # 特定类别ID
+        includeParents: 1
+      enabled: false
+
+# Browsing Deals API 配置
+browsing_deals:
+  enabled: true
+  collection: "browsing_deals"
+  tasks:
+    - name: "us_new_lowest_price"
+      params:
+        domainId: 1
+        priceTypes: [1]  # New 类型
+        dateRange: 0  # Day
+        isLowest: true
+        page: 0
+      enabled: true
+
+# Products API 配置
+products:
+  enabled: true
+  collection: "products"
+  tasks:
+    - name: "us_sample_products"
+      params:
+        domain: 1
+        asins: ["B08N5WRWNW", "B07H8QMZPV"]  # 示例 ASIN
+        offers: 20
+        rating: 1
+      enabled: true
+
+# Category Searches API 配置
+category_searches:
+  enabled: false
+  collection: "category_searches"
+  tasks:
+    - name: "us_electronics_search"
+      params:
+        domain: 1
+        term: "electronics"
+      enabled: false
+
+# Lightning Deals API 配置
+lightning_deals:
+  enabled: false
+  collection: "lightning_deals"
+  tasks:
+    - name: "us_active_deals"
+      params:
+        domain: 1
+        state: "AVAILABLE"
+      enabled: false
+
+# Most Rated Sellers API 配置
+most_rated_sellers:
+  enabled: false
+  collection: "most_rated_sellers"
+  tasks:
+    - name: "us_top_sellers"
+      params:
+        domain: 1
+      enabled: false
+
+# Product Finder API 配置
+product_finder:
+  enabled: false
+  collection: "product_finder"
+  tasks:
+    - name: "us_price_range_search"
+      params:
+        domain: 1
+        query:
+          perPage: 10
+          filters:
+            current: [0, 100]  # 价格范围 $0-$100
+      enabled: false
+
+# Product Searches API 配置
+product_searches:
+  enabled: false
+  collection: "product_searches"
+  tasks:
+    - name: "us_keyword_search"
+      params:
+        domain: 1
+        term: "laptop"
+        page: 0
+      enabled: false
+
+# Seller Information API 配置
+seller_information:
+  enabled: false
+  collection: "seller_information"
+  tasks:
+    - name: "us_seller_info"
+      params:
+        domain: 1
+        seller_ids: ["A1PA6795UKMFR9"]
+      enabled: false
+

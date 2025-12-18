@@ -1,0 +1,52 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs - 所有日志文件和日志目录（包括测试产生的）
+# 匹配所有位置的 logs 目录
+logs/
+**/logs/
+
+# 匹配所有位置的 .log 文件
+*.log
+**/*.log
+
+# 测试产生的临时文件和目录
+test-results/
+coverage/
+*.coverprofile
+*.cover
+
+# Go 测试缓存
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+bin/
+dist/
+
