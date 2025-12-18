@@ -2,6 +2,7 @@
 
 # 应用名称
 APP_NAME=keepa
+MML_CLIENT_NAME=mml-client
 
 # 构建目录
 BUILD_DIR=bin
@@ -31,6 +32,12 @@ test: ## 运行测试
 build: ## 构建应用
 	@mkdir -p $(BUILD_DIR)
 	$(GO) build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/keepa
+
+build-client: ## 构建 MML Client
+	@mkdir -p $(BUILD_DIR)
+	$(GO) build -o $(BUILD_DIR)/$(MML_CLIENT_NAME) ./cmd/mml-client
+
+build-all: build build-client ## 构建所有应用（包括 MML Client）
 
 run: build ## 构建并运行应用
 	./$(BUILD_DIR)/$(APP_NAME)

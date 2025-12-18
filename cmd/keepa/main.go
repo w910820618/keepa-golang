@@ -10,6 +10,7 @@ import (
 
 	"keepa/internal/config"
 	"keepa/internal/database"
+	"keepa/internal/function"
 	"keepa/internal/logger"
 	"keepa/internal/scheduler"
 	"keepa/internal/task"
@@ -143,6 +144,28 @@ func main() {
 		zap.Int("task_count", sched.GetTaskCount()),
 	)
 
+	// 加载 Keepa API 查询配置
+	queriesConfig, err := config.LoadKeepaQueriesConfig("", zapLogger)
+	if err != nil {
+		zapLogger.Warn("failed to load queries config, some functions may not work",
+			zap.Error(err),
+		)
+		queriesConfig = &config.KeepaQueriesConfig{}
+	}
+
+	// 创建服务器依赖
+	deps := &function.Dependencies{
+		Config:        cfg,
+		QueriesConfig: queriesConfig,
+		Logger:        zapLogger,
+	}
+
+	// 启动 HTTP 服务器（用于一次性任务）
+	httpServer := function.NewServerWithDeps(&cfg.Server, zapLogger, deps)
+	if err := httpServer.Start(); err != nil {
+		zapLogger.Fatal("failed to start HTTP server", zap.Error(err))
+	}
+
 	// 等待中断信号
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -156,6 +179,12 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	// 停止 HTTP 服务器
+	if err := httpServer.Stop(shutdownCtx); err != nil {
+		zapLogger.Error("error stopping HTTP server", zap.Error(err))
+	}
+
+	// 停止调度器
 	if err := sched.Stop(shutdownCtx); err != nil {
 		zapLogger.Error("error stopping scheduler", zap.Error(err))
 	}
@@ -170,11 +199,6 @@ func main() {
 
 // registerTasks 注册所有任务
 func registerTasks(registry *task.TaskRegistry) error {
-	// 注册示例任务
-	if err := registry.Register(tasks.NewExampleTask()); err != nil {
-		return fmt.Errorf("failed to register example task: %w", err)
-	}
-
 	// 注册清理任务（示例）
 	// 注意：在实际使用中，您可以根据配置决定是否启用某些任务
 	if err := registry.Register(tasks.NewCleanupTask()); err != nil {

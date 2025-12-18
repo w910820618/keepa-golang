@@ -14,6 +14,7 @@ type Config struct {
 	Logger    LoggerConfig    `mapstructure:"logger"`
 	Database  DatabaseConfig  `mapstructure:"database"`
 	KeepaAPI  KeepaAPIConfig  `mapstructure:"keepa_api"`
+	Server    ServerConfig    `mapstructure:"server"`
 }
 
 // AppConfig 应用基础配置
@@ -105,6 +106,14 @@ type MongoDBConfig struct {
 type KeepaAPIConfig struct {
 	AccessKey string `mapstructure:"access_key"`
 	Timeout   string `mapstructure:"timeout"` // 例如: "30s"
+}
+
+// ServerConfig HTTP 服务器配置
+type ServerConfig struct {
+	Enabled bool   `mapstructure:"enabled"` // 是否启用服务器
+	Host    string `mapstructure:"host"`    // 监听地址
+	Port    int    `mapstructure:"port"`    // 监听端口
+	Mode    string `mapstructure:"mode"`    // gin 模式: debug, release, test
 }
 
 // Load 加载配置
@@ -232,6 +241,12 @@ func setDefaults() {
 
 	// Keepa API 默认值
 	viper.SetDefault("keepa_api.timeout", "30s")
+
+	// Server 默认值
+	viper.SetDefault("server.enabled", true)
+	viper.SetDefault("server.host", "0.0.0.0")
+	viper.SetDefault("server.port", 8080)
+	viper.SetDefault("server.mode", "debug")
 }
 
 // GetDefaultTimeout 获取默认超时时间

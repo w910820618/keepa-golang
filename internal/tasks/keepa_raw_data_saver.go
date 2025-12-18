@@ -18,6 +18,7 @@ import (
 	"keepa/internal/api/keepa/products"
 	"keepa/internal/api/keepa/seller_information"
 	"keepa/internal/config"
+	"keepa/internal/database"
 
 	"go.uber.org/zap"
 )
@@ -25,13 +26,13 @@ import (
 // KeepaRawDataSaver Keepa API 原始数据获取和存储服务
 type KeepaRawDataSaver struct {
 	client        *api.Client
-	storage       *api.Storage
+	storage       *database.Storage
 	logger        *zap.Logger
 	queriesConfig *config.KeepaQueriesConfig
 }
 
 // NewKeepaRawDataSaver 创建新的 KeepaRawDataSaver 实例
-func NewKeepaRawDataSaver(client *api.Client, storage *api.Storage, queriesConfig *config.KeepaQueriesConfig, logger *zap.Logger) *KeepaRawDataSaver {
+func NewKeepaRawDataSaver(client *api.Client, storage *database.Storage, queriesConfig *config.KeepaQueriesConfig, logger *zap.Logger) *KeepaRawDataSaver {
 	return &KeepaRawDataSaver{
 		client:        client,
 		storage:       storage,

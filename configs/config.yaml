@@ -72,4 +72,10 @@ keepa_api:
   access_key: "3punsr6phlssuf2ttp87fibotsjt3205q9bcq9ag3aq36hcrj2ebhnqjcjmnls9b"  # Keepa API 访问密钥（必须配置）
   timeout: 30s                                                                     # 请求超时时间
 
+# HTTP 服务器配置（用于一次性任务接口）
+server:
+  enabled: true   # 是否启用 HTTP 服务器
+  host: "0.0.0.0" # 监听地址
+  port: 8080       # 监听端口
+  mode: "debug"   # gin 模式: debug, release, test
 

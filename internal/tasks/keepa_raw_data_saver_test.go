@@ -10,6 +10,7 @@ import (
 	"keepa/internal/api"
 	"keepa/internal/api/keepa/best_sellers"
 	"keepa/internal/config"
+	"keepa/internal/database"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -103,7 +104,7 @@ func TestKeepaRawDataSaver_FetchAndStoreBestSellers_Integration(t *testing.T) {
 	defer testDB.Drop(ctx) // 清理测试数据
 
 	// 创建存储
-	storage := api.NewStorage(testDB, zap.NewNop())
+	storage := database.NewStorage(testDB, zap.NewNop())
 
 	// 创建配置
 	queriesConfig := &config.KeepaQueriesConfig{
@@ -420,7 +421,7 @@ func TestKeepaRawDataSaver_FetchAndStoreBestSellers_WithRealAPI(t *testing.T) {
 	}
 
 	// 3. 创建存储
-	storage := api.NewStorage(testDB, zap.NewNop())
+	storage := database.NewStorage(testDB, zap.NewNop())
 
 	// 4. 创建 API 客户端
 	timeout, err := time.ParseDuration(cfg.KeepaAPI.Timeout)
@@ -532,7 +533,7 @@ func TestKeepaRawDataSaver_FetchAndStoreCategoryLookup_WithRealAPI(t *testing.T)
 	}
 
 	// 创建存储和客户端
-	storage := api.NewStorage(testDB, zap.NewNop())
+	storage := database.NewStorage(testDB, zap.NewNop())
 	timeout, _ := time.ParseDuration(cfg.KeepaAPI.Timeout)
 	if timeout == 0 {
 		timeout = 30 * time.Second
@@ -613,7 +614,7 @@ func TestKeepaRawDataSaver_MultipleAPIs_WithRealAPI(t *testing.T) {
 	}
 
 	// 创建存储和客户端
-	storage := api.NewStorage(testDB, zap.NewNop())
+	storage := database.NewStorage(testDB, zap.NewNop())
 	timeout, _ := time.ParseDuration(cfg.KeepaAPI.Timeout)
 	if timeout == 0 {
 		timeout = 30 * time.Second
@@ -709,7 +710,7 @@ func TestKeepaRawDataSaver_ErrorHandling(t *testing.T) {
 	defer testDB.Drop(ctx)
 
 	// 创建存储
-	storage := api.NewStorage(testDB, zap.NewNop())
+	storage := database.NewStorage(testDB, zap.NewNop())
 
 	// 测试配置解析错误
 	queriesConfig := &config.KeepaQueriesConfig{
@@ -767,7 +768,7 @@ func TestKeepaRawDataSaver_DisabledAPIs(t *testing.T) {
 	defer testDB.Drop(ctx)
 
 	// 创建存储
-	storage := api.NewStorage(testDB, zap.NewNop())
+	storage := database.NewStorage(testDB, zap.NewNop())
 
 	// 创建配置，所有 API 都禁用
 	queriesConfig := &config.KeepaQueriesConfig{
@@ -822,7 +823,7 @@ func TestKeepaRawDataSaver_DisabledTasks(t *testing.T) {
 	defer testDB.Drop(ctx)
 
 	// 创建存储
-	storage := api.NewStorage(testDB, zap.NewNop())
+	storage := database.NewStorage(testDB, zap.NewNop())
 
 	// 创建配置，API 启用但任务禁用
 	queriesConfig := &config.KeepaQueriesConfig{
