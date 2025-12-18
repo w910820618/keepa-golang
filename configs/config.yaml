@@ -71,6 +71,13 @@ database:
 keepa_api:
   access_key: "3punsr6phlssuf2ttp87fibotsjt3205q9bcq9ag3aq36hcrj2ebhnqjcjmnls9b"  # Keepa API 访问密钥（必须配置）
   timeout: 30s                                                                     # 请求超时时间
+  print_curl_command: false                                                       # 是否打印 curl 命令（用于调试，默认 false）
+  print_response_body: false                                                        # 是否打印 API 响应体（用于调试，默认 false）
+  # Token 管理配置
+  token:
+    min_tokens_threshold: 5    # 最小token阈值，低于此值时会等待恢复（默认5）
+    max_wait_time: 60m         # 最大等待时间（默认60分钟）
+    enable_rate_limit: true     # 是否启用速率限制（默认true）
 
 # HTTP 服务器配置（用于一次性任务接口）
 server:

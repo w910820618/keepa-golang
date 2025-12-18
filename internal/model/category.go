@@ -52,8 +52,12 @@ type Category struct {
 	AvgDeltaPercent90Amazon float64 `json:"avgDeltaPercent90Amazon,omitempty" bson:"avg_delta_percent_90_amazon,omitempty"`  // 过去 90 天 Amazon 报价价格的平均百分比变化
 
 	// 关联信息
-	RelatedCategories []int64  `json:"relatedCategories,omitempty" bson:"related_categories,omitempty"` // 相关分类 ID 列表（按共同列出频率排序）
-	TopBrands         []string `json:"topBrands,omitempty" bson:"top_brands,omitempty"`                 // 最多前 3 个最常见的品牌（按出现频率降序）
+	RelatedCategories     []int64  `json:"relatedCategories,omitempty" bson:"related_categories,omitempty"`           // 相关分类 ID 列表（按共同列出频率排序）
+	TopBrands             []string `json:"topBrands,omitempty" bson:"top_brands,omitempty"`                           // 最多前 3 个最常见的品牌（按出现频率降序）
+	RelatedSellerNames    []string `json:"relatedSellerNames,omitempty" bson:"related_seller_names,omitempty"`        // 相关卖家名称列表
+	RelatedSellerNamesAny []string `json:"relatedSellerNamesAny,omitempty" bson:"related_seller_names_any,omitempty"` // 相关卖家名称列表（任意条件）
+	TopSellers            []string `json:"topSellers,omitempty" bson:"top_sellers,omitempty"`                         // 顶级卖家 ID 列表
+	TopSellersAny         []string `json:"topSellersAny,omitempty" bson:"top_sellers_any,omitempty"`                  // 顶级卖家 ID 列表（任意条件）
 }
 
 // CategoryTree 分类树节点

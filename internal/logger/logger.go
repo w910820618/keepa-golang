@@ -17,13 +17,13 @@ func NewLogger(cfg LoggerConfig) (*zap.Logger, error) {
 	if err != nil {
 		level = zapcore.InfoLevel
 	}
-	
+
 	// 设置编码器配置
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.TimeKey = "timestamp"
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	
+
 	// 选择编码器
 	var encoder zapcore.Encoder
 	if cfg.Format == "json" {
@@ -31,10 +31,10 @@ func NewLogger(cfg LoggerConfig) (*zap.Logger, error) {
 	} else {
 		encoder = zapcore.NewConsoleEncoder(encoderConfig)
 	}
-	
+
 	// 设置输出
 	var cores []zapcore.Core
-	
+
 	// 控制台输出
 	consoleCore := zapcore.NewCore(
 		encoder,
@@ -42,7 +42,7 @@ func NewLogger(cfg LoggerConfig) (*zap.Logger, error) {
 		level,
 	)
 	cores = append(cores, consoleCore)
-	
+
 	// 文件输出（如果配置了路径）
 	if cfg.OutputPath != "" {
 		// 确保日志目录存在
@@ -50,7 +50,7 @@ func NewLogger(cfg LoggerConfig) (*zap.Logger, error) {
 		if err := os.MkdirAll(logDir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
-		
+
 		fileWriter := &lumberjack.Logger{
 			Filename:   cfg.OutputPath,
 			MaxSize:    cfg.MaxSize,
@@ -58,7 +58,7 @@ func NewLogger(cfg LoggerConfig) (*zap.Logger, error) {
 			MaxAge:     cfg.MaxAge,
 			Compress:   cfg.Compress,
 		}
-		
+
 		fileCore := zapcore.NewCore(
 			encoder,
 			zapcore.AddSync(fileWriter),
@@ -66,11 +66,11 @@ func NewLogger(cfg LoggerConfig) (*zap.Logger, error) {
 		)
 		cores = append(cores, fileCore)
 	}
-	
+
 	// 创建 logger
 	core := zapcore.NewTee(cores...)
 	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
-	
+
 	return logger, nil
 }
 
@@ -84,4 +84,3 @@ type LoggerConfig struct {
 	MaxAge     int
 	Compress   bool
 }
-

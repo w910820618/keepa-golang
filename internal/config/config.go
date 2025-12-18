@@ -104,8 +104,21 @@ type MongoDBConfig struct {
 
 // KeepaAPIConfig Keepa API 配置
 type KeepaAPIConfig struct {
-	AccessKey string `mapstructure:"access_key"`
-	Timeout   string `mapstructure:"timeout"` // 例如: "30s"
+	AccessKey        string           `mapstructure:"access_key"`
+	Timeout          string           `mapstructure:"timeout"`            // 例如: "30s"
+	PrintCurlCommand bool             `mapstructure:"print_curl_command"` // 是否打印 curl 命令（用于调试）
+	PrintResponseBody bool            `mapstructure:"print_response_body"` // 是否打印 API 响应体（用于调试）
+	Token            TokenConfig      `mapstructure:"token"`              // Token 管理配置
+}
+
+// TokenConfig Token 管理配置
+type TokenConfig struct {
+	MinTokensThreshold int    `mapstructure:"min_tokens_threshold"` // 最小token阈值
+	MaxWaitTime        string `mapstructure:"max_wait_time"`       // 最大等待时间，例如: "60m"
+	EnableRateLimit    bool   `mapstructure:"enable_rate_limit"`    // 是否启用速率限制
+
+	// 解析后的时间，由 Load 函数填充
+	MaxWaitTimeDuration time.Duration
 }
 
 // ServerConfig HTTP 服务器配置
@@ -187,6 +200,15 @@ func (c *Config) parseDurations() error {
 		c.Database.PostgreSQL.ConnMaxIdleTime = duration
 	}
 
+	// 解析 Token 配置中的时间
+	if c.KeepaAPI.Token.MaxWaitTime != "" {
+		duration, err := time.ParseDuration(c.KeepaAPI.Token.MaxWaitTime)
+		if err != nil {
+			return fmt.Errorf("invalid keepa_api.token.max_wait_time: %w", err)
+		}
+		c.KeepaAPI.Token.MaxWaitTimeDuration = duration
+	}
+
 	return nil
 }
 
@@ -241,6 +263,11 @@ func setDefaults() {
 
 	// Keepa API 默认值
 	viper.SetDefault("keepa_api.timeout", "30s")
+	viper.SetDefault("keepa_api.print_curl_command", false)  // 默认不打印 curl 命令
+	viper.SetDefault("keepa_api.print_response_body", false) // 默认不打印响应体
+	viper.SetDefault("keepa_api.token.min_tokens_threshold", 5)
+	viper.SetDefault("keepa_api.token.max_wait_time", "60m")
+	viper.SetDefault("keepa_api.token.enable_rate_limit", true)
 
 	// Server 默认值
 	viper.SetDefault("server.enabled", true)

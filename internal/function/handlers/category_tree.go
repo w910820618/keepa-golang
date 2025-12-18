@@ -87,24 +87,42 @@ func NewCategoryTreeHandlerWithDeps(deps DependenciesProvider) *CategoryTreeHand
 	}
 
 	// 获取 MongoDB 数据库
+	var storage *database.Storage
 	dbs := database.GetGlobal()
-	if dbs == nil || dbs.MongoDB == nil {
-		logger.Error("MongoDB not available")
-		return nil
+	if dbs != nil && dbs.MongoDB != nil {
+		// 创建 Storage
+		storage = database.NewStorage(dbs.MongoDB, logger)
+	} else {
+		// MongoDB 不可用，记录警告但不阻止 handler 创建
+		// handler 仍然可以工作，只是保存功能不可用
+		logger.Warn("MongoDB not available, database save functionality will be disabled")
+		storage = nil
 	}
-
-	// 创建 Storage
-	storage := database.NewStorage(dbs.MongoDB, logger)
 
 	// 创建 API Client
 	timeout, err := time.ParseDuration(cfg.KeepaAPI.Timeout)
 	if err != nil {
 		timeout = 30 * time.Second
 	}
+
+	// 创建 Token Manager（如果配置启用）
+	var tokenManager *api.TokenManager
+	if cfg.KeepaAPI.Token.EnableRateLimit {
+		tokenManager = api.NewTokenManager(api.TokenManagerConfig{
+			MinTokensThreshold: cfg.KeepaAPI.Token.MinTokensThreshold,
+			MaxWaitTime:        cfg.KeepaAPI.Token.MaxWaitTimeDuration,
+			EnableRateLimit:    cfg.KeepaAPI.Token.EnableRateLimit,
+			Logger:             logger,
+		})
+	}
+
 	apiClient := api.NewClient(api.Config{
-		AccessKey: cfg.KeepaAPI.AccessKey,
-		Timeout:   timeout,
-		Logger:    logger,
+		AccessKey:         cfg.KeepaAPI.AccessKey,
+		Timeout:           timeout,
+		Logger:            logger,
+		PrintCurlCommand:  cfg.KeepaAPI.PrintCurlCommand,
+		PrintResponseBody: cfg.KeepaAPI.PrintResponseBody,
+		TokenManager:      tokenManager,
 	})
 
 	// 创建 Category Lookup Service
@@ -172,6 +190,7 @@ func (h *CategoryTreeHandler) JSONInternalError(c *gin.Context, message string, 
 type CategoryTreeRequest struct {
 	TaskName   string  `json:"task_name,omitempty"`   // 可选，如果提供则从配置读取
 	CategoryID []int64 `json:"category_id,omitempty"` // 可选，如果提供则使用此参数，否则从配置读取
+	SaveToDB   *bool   `json:"save_to_db,omitempty"`  // 可选，是否保存到数据库，默认为 false（测试模式）
 }
 
 // CategoryTreeResponse 响应结构
@@ -302,32 +321,44 @@ func (h *CategoryTreeHandler) BuildCategoryTree(c *gin.Context) {
 		totalNodes += count
 	}
 
-	// 存储到 MongoDB
-	collectionName := categoryLookupConfig.Collection
-	if collectionName == "" {
-		collectionName = "category_tree"
-	}
-
-	// 为每个根节点创建存储文档
+	// 存储到 MongoDB（仅在 SaveToDB 为 true 时保存）
 	collections := make(map[string]int)
-	for _, rootTree := range rootTrees {
-		// 使用 cat_id 和 domain_id 作为唯一标识
-		filter := bson.M{
-			"category.cat_id":    rootTree.Category.CatID,
-			"category.domain_id": rootTree.Category.DomainID,
+	saveToDB := req.SaveToDB != nil && *req.SaveToDB
+
+	if saveToDB {
+		// 检查 MongoDB 是否可用
+		if h.storage == nil {
+			h.JSONError(c, 503, "MongoDB is not available, cannot save to database", nil)
+			return
 		}
 
-		// 转换为 BSON 文档
-		doc := convertCategoryTreeToBSON(rootTree)
-
-		if err := h.storage.SaveRawDataWithFilter(ctx, collectionName, filter, doc); err != nil {
-			h.logger.Error("failed to save category tree node",
-				zap.Int64("cat_id", rootTree.Category.CatID),
-				zap.Error(err),
-			)
-		} else {
-			collections[collectionName] = collections[collectionName] + 1
+		collectionName := categoryLookupConfig.Collection
+		if collectionName == "" {
+			collectionName = "category_tree"
 		}
+
+		// 为每个根节点创建存储文档
+		for _, rootTree := range rootTrees {
+			// 使用 cat_id 和 domain_id 作为唯一标识
+			filter := bson.M{
+				"category.cat_id":    rootTree.Category.CatID,
+				"category.domain_id": rootTree.Category.DomainID,
+			}
+
+			// 转换为 BSON 文档
+			doc := convertCategoryTreeToBSON(rootTree)
+
+			if err := h.storage.SaveRawDataWithFilter(ctx, collectionName, filter, doc); err != nil {
+				h.logger.Error("failed to save category tree node",
+					zap.Int64("cat_id", rootTree.Category.CatID),
+					zap.Error(err),
+				)
+			} else {
+				collections[collectionName] = collections[collectionName] + 1
+			}
+		}
+	} else {
+		h.logger.Info("skipping database save (test mode)")
 	}
 
 	response := CategoryTreeResponse{
@@ -378,6 +409,7 @@ func (h *CategoryTreeHandler) buildCategoryTreeRecursive(
 	}
 
 	// 递归处理子分类
+	// 当 category.Children 为空时，循环不会执行，递归自然停止
 	totalCount := 1 // 当前节点
 	for _, childID := range category.Children {
 		childTree, count, err := h.buildCategoryTreeRecursive(ctx, childID, domain, visited)
@@ -397,65 +429,53 @@ func (h *CategoryTreeHandler) buildCategoryTreeRecursive(
 }
 
 // parseCategoryResponse 解析 API 响应为 Category 对象
+// API 返回格式: { "categories": { "2975221011": { ... }, "2975238011": { ... } }, ... }
 func (h *CategoryTreeHandler) parseCategoryResponse(rawData []byte, expectedCatID int64, domain int) (*model.Category, error) {
-	var categories []model.Category
+	// 解析顶层响应对象
+	var apiResponse map[string]interface{}
+	if err := json.Unmarshal(rawData, &apiResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse API response: %w", err)
+	}
 
-	// 尝试解析为对象（包含 categories 字段）
-	var apiResponseObj map[string]interface{}
-	if err := json.Unmarshal(rawData, &apiResponseObj); err == nil {
-		// 检查是否有 categories 字段
-		if cats, ok := apiResponseObj["categories"]; ok {
-			// 转换为数组
-			if catsBytes, err := json.Marshal(cats); err == nil {
-				if err := json.Unmarshal(catsBytes, &categories); err == nil {
-					// 成功解析为数组
-				}
-			}
-		} else {
-			// 可能是单个分类对象，尝试直接解析
-			var singleCategory model.Category
-			if catBytes, err := json.Marshal(apiResponseObj); err == nil {
-				if err := json.Unmarshal(catBytes, &singleCategory); err == nil {
-					categories = []model.Category{singleCategory}
-				}
-			}
+	// 获取 categories 字段
+	categoriesObj, ok := apiResponse["categories"]
+	if !ok {
+		return nil, fmt.Errorf("categories field not found in API response")
+	}
+
+	// categories 是一个对象，key 是字符串形式的 category ID，value 是分类对象
+	categoriesMap, ok := categoriesObj.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("categories field is not an object")
+	}
+
+	// 查找匹配的分类（使用字符串形式的 ID）
+	expectedCatIDStr := fmt.Sprintf("%d", expectedCatID)
+	categoryObj, found := categoriesMap[expectedCatIDStr]
+	if !found {
+		// 如果没有找到精确匹配，尝试使用第一个可用的分类
+		if len(categoriesMap) == 0 {
+			return nil, fmt.Errorf("no category data returned for category %d", expectedCatID)
 		}
-	}
-
-	// 如果上面没有成功，尝试直接解析为数组
-	if len(categories) == 0 {
-		if err := json.Unmarshal(rawData, &categories); err != nil {
-			// 最后尝试解析为单个对象
-			var singleCategory model.Category
-			if err := json.Unmarshal(rawData, &singleCategory); err != nil {
-				return nil, fmt.Errorf("failed to parse API response: %w", err)
-			}
-			categories = []model.Category{singleCategory}
-		}
-	}
-
-	if len(categories) == 0 {
-		return nil, fmt.Errorf("no category data returned for category %d", expectedCatID)
-	}
-
-	// 查找匹配的分类
-	var category *model.Category
-	found := false
-	for i := range categories {
-		if categories[i].CatID == expectedCatID {
-			category = &categories[i]
-			found = true
+		// 使用第一个分类
+		for _, cat := range categoriesMap {
+			categoryObj = cat
 			break
 		}
+		h.logger.Warn("category ID mismatch, using first available category",
+			zap.Int64("requested_id", expectedCatID),
+		)
 	}
 
-	if !found {
-		// 如果没有找到精确匹配，使用第一个
-		category = &categories[0]
-		h.logger.Warn("category ID mismatch, using first category",
-			zap.Int64("requested_id", expectedCatID),
-			zap.Int64("found_id", category.CatID),
-		)
+	// 将分类对象转换为 JSON 字节，然后解析为 Category 结构
+	categoryBytes, err := json.Marshal(categoryObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal category object: %w", err)
+	}
+
+	var category model.Category
+	if err := json.Unmarshal(categoryBytes, &category); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal category: %w", err)
 	}
 
 	// 确保 DomainID 设置正确
@@ -463,7 +483,15 @@ func (h *CategoryTreeHandler) parseCategoryResponse(rawData []byte, expectedCatI
 		category.DomainID = domain
 	}
 
-	return category, nil
+	// 验证 CatID 是否匹配
+	if category.CatID != expectedCatID && found {
+		h.logger.Warn("category ID mismatch",
+			zap.Int64("requested_id", expectedCatID),
+			zap.Int64("found_id", category.CatID),
+		)
+	}
+
+	return &category, nil
 }
 
 // convertCategoryTreeToBSON 将分类树转换为 BSON 格式
